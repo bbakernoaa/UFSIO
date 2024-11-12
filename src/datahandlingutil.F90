@@ -134,3 +134,25 @@ contains
   end subroutine check_corner_stagger_defined
 
 end subroutine readGridFromFile
+
+function replaceTemplate(template, time_format, esmf_clock) result(output)
+  character(len=*), intent(in) :: template, time_format
+  type(ESMF_Clock), intent(in) :: esmf_clock
+  character(len=256) :: output
+  character(len=4) :: year
+  character(len=2) :: month, day
+  integer :: rc
+
+  call ESMF_ClockGet(ESMF_ClockGetStartTime(esmf_clock), year=year, month=month, day=day, rc=rc)
+  if (rc /= ESMF_SUCCESS) then
+    print *, 'Error getting date from ESMF_Clock'
+    stop
+  end if
+
+  ! Replace placeholders in the time format with actual values
+  output = template
+  output = replace(output, "{yyyy}", year)
+  output = replace(output, "{mm}", month)
+  output = replace(output, "{dd}", day)
+end function replaceTemplate
+
