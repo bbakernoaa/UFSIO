@@ -1,5 +1,5 @@
 module grid_locstream_module
-  use ESMF_Mod
+  use ESMF
   use netcdf
   implicit none
   private
@@ -8,7 +8,6 @@ module grid_locstream_module
 
 contains
   subroutine create_grid(grid, nx, ny, lats, lons, rc)
-    implicit none
     type(ESMF_GridType), intent(out) :: grid
     integer, intent(in) :: nx, ny
     real(ESMF_KIND_R8), dimension(:), allocatable, intent(out) :: lats, lons
