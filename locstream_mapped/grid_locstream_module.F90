@@ -104,16 +104,16 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     type(ESMF_LocStream), intent(inout) :: locstream
     integer, dimension(:), allocatable, intent(out) :: i_coords, j_coords
     integer, intent(out) :: rc
-    integer :: locCount, stat
+    integer :: elementCount, stat
     real(ESMF_KIND_R8), dimension(:), allocatable :: lon, lat
 
     ! Get the number of locations
-    call ESMF_LocStreamGet(locstream, name='elementCount', rc=rc, elementCount=locCount)
+    call ESMF_LocStreamGet(locstream, name='elementCount', rc=rc, elementCount=elementCount)
     if (rc /= ESMF_SUCCESS) return
 
     ! Allocate arrays
-    allocate(lon(locCount), lat(locCount), &
-             i_coords(locCount), j_coords(locCount), stat=stat)
+    allocate(lon(elementCount), lat(elementCount), &
+             i_coords(elementCount), j_coords(elementCount), stat=stat)
     if (stat /= 0) then
         rc = ESMF_FAILURE
         return
