@@ -95,9 +95,9 @@ contains
     call ESMF_LocStreamAddCoord(locstream)
 
     ! Set coordinates in the LocStream
-    call ESMF_LocStreamSetCoord(locstream, 1, lon, rc=rc)
+    call ESMF_LocStreamSetCoord(locstream, 1, lon, rc)
     if (rc /= ESMF_SUCCESS) return
-    call ESMF_LocStreamSetCoord(locstream, 2, lat, rc=rc)
+    call ESMF_LocStreamSetCoord(locstream, 2, lat, rc)
     if (rc /= ESMF_SUCCESS) return
 
 end subroutine create_locstream
@@ -107,25 +107,25 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     type(ESMF_LocStream), intent(inout) :: locstream
     integer, dimension(:), allocatable, intent(out) :: i_coords, j_coords
     integer, intent(out) :: rc
-    integer :: elementCount, stat
+    integer :: locationCount, stat
     real(ESMF_KIND_R8), dimension(:), allocatable :: lon, lat
 
     ! Get the number of locations
-    call ESMF_LocStreamGet(locstream, name='elementCount', rc=rc, elementCount=elementCount)
+    call ESMF_LocStreamGet(locstream, name='locationCount', rc=rc, locationCount=locationCount)
     if (rc /= ESMF_SUCCESS) return
 
     ! Allocate arrays
-    allocate(lon(elementCount), lat(elementCount), &
-             i_coords(elementCount), j_coords(elementCount), stat=stat)
+    allocate(lon(locationCount), lat(locationCount), &
+             i_coords(locationCount), j_coords(locationCount), stat=stat)
     if (stat /= 0) then
         rc = ESMF_FAILURE
         return
     endif
 
     ! Get coordinates from LocStream
-    call ESMF_LocStreamGetCoord(locstream, 1, lon, rc=rc)
+    call ESMF_LocStreamGetCoord(locstream, 1, lon, rc)
     if (rc /= ESMF_SUCCESS) return
-    call ESMF_LocStreamGetCoord(locstream, 2, lat, rc=rc)
+    call ESMF_LocStreamGetCoord(locstream, 2, lat, rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Use ESMF_GridLocate to find the grid indices
@@ -221,10 +221,10 @@ end subroutine map_locstream_to_grid
 
     integer :: ncid, loc_dimid
     integer :: i_varid, j_varid
-    integer :: locCount, status
+    integer :: locationCount, status
 
     ! Get the number of locations
-    call ESMF_LocStreamGet(locstream, count=locCount, rc=rc)  ! Remove keyword and change to count
+    call ESMF_LocStreamGet(locstream, name='locationCount', rc=rc, locationCount=locationCount)
     if (rc /= ESMF_SUCCESS) return
 
     ! Create netCDF file
