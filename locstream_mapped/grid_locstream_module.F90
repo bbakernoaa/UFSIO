@@ -91,11 +91,10 @@ contains
                                    coordSys=ESMF_COORDSYS_SPH_DEG, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
-    ! Add coordinates to the LocStream
-    call ESMF_LocStreamAddCoord(locstream)
-
     ! Set coordinates in the LocStream
-    call ESMF_LocStreamSetCoord(locstream, coord1=coords(1,:), coord2=coords(2,:), rc=rc)
+    call ESMF_LocStreamSetCoord(locstream, ESMF_COORD_LON, coords(1,:), rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+    call ESMF_locStreamSetCoord(locstream, ESMF_COORD_LAT, coords(2,:), rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
   end subroutine create_locstream
@@ -121,12 +120,13 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     endif
 
     ! Get coordinates from LocStream
-    call ESMF_LocStreamGetCoord(locstream, coord1=lon, coord2=lat, rc=rc)
+    call ESMF_LocStreamGetCoord(locstream, ESMF_COORD_LON, lon, rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+    call ESMF_LocStreamGetCoord(locstream, ESMF_COORD_LAT, lat, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Use ESMF_GridLocate to find the grid indices
-    call ESMF_GridLocate(grid, lon=lon, lat=lat, &
-                        i_indx=i_coords, j_indx=j_coords, rc=rc)
+    call ESMF_GridLocate(grid, lon, lat, i_coords, j_coords, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Clean up temporary arrays
