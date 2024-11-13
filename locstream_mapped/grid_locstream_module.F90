@@ -138,8 +138,6 @@ contains
 
   end subroutine map_locstream_to_grid
 
-  [rest of the code remains the same...]
-
 end module grid_locstream_module
 
   subroutine write_grid_to_netcdf(filename, grid, lats, lons, rc)
