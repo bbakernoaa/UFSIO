@@ -87,7 +87,7 @@ contains
     end do
 
     ! Create a LocStream
-    locstream = ESMF_LocStreamCreate(minIndex=1, maxIndex=locCount, &
+    call ESMF_LocStreamCreate(locstream=locstream, locationCount=locCount, &
                                    coordSys=ESMF_COORDSYS_SPH_DEG, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
@@ -111,7 +111,7 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     real(ESMF_KIND_R8), dimension(:), allocatable :: lon, lat
 
     ! Get the number of locations
-    call ESMF_LocStreamGet(locstream, name='locationCount', rc=rc, locationCount=locationCount)
+    call ESMF_LocStreamGet(locstream, name='locationCount', locationCount, rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Allocate arrays
@@ -235,7 +235,7 @@ end subroutine map_locstream_to_grid
     endif
 
     ! Define dimensions
-    status = nf90_def_dim(ncid, "location", locCount, loc_dimid)
+    status = nf90_def_dim(ncid, "location", locationCount, loc_dimid)
     if (status /= nf90_noerr) goto 10
 
     ! Define variables
