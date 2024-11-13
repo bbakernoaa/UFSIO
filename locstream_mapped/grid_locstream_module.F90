@@ -66,15 +66,15 @@ contains
 
   end subroutine create_grid
 
-  subroutine create_locstream(locstream, locCount, coords, rc)
-    type(ESMF_LocStream), intent(out) :: locstream
+  subroutine create_locstream(locstream, locCount, lat, lon, rc)
+    type(ESMF_LocStreamType), intent(out) :: locstream
     integer, intent(in) :: locCount
-    real(ESMF_KIND_R8), dimension(:,:), allocatable, intent(out) :: coords
+    real(ESMF_KIND_R8), dimension(:), allocatable, intent(out) :: lat, lon
     integer, intent(out) :: rc
     integer :: i, stat
 
-    ! Allocate and set coordinates
-    allocate(coords(2, locCount), stat=stat)
+    ! Allocate coordinate arrays
+    allocate(lon(locCount), lat(locCount), stat=stat)
     if (stat /= 0) then
         rc = ESMF_FAILURE
         return
@@ -82,8 +82,8 @@ contains
 
     ! Set coordinate values
     do i = 1, locCount
-        coords(1, i) = 30.0 + i  ! longitude
-        coords(2, i) = -90.0 + i ! latitude
+        lon(i) = 30.0 + i
+        lat(i) = -90.0 + i
     end do
 
     ! Create a LocStream
@@ -91,13 +91,16 @@ contains
                                    coordSys=ESMF_COORDSYS_SPH_DEG, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
+    ! Add coordinates to the LocStream
+    call ESMF_LocStreamAddCoord(locstream)
+
     ! Set coordinates in the LocStream
-    call ESMF_LocStreamSetCoord(locstream, 1, coords(1,:), rc=rc)
+    call ESMF_LocStreamSetCoord(locstream, 1, lon, rc=rc)
     if (rc /= ESMF_SUCCESS) return
-    call ESMF_locStreamSetCoord(locstream, 2, coords(2,:), rc=rc)
+    call ESMF_LocStreamSetCoord(locstream, 2, lat, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
-  end subroutine create_locstream
+end subroutine create_locstream
 
 subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     type(ESMF_Grid), intent(in) :: grid
