@@ -1,5 +1,6 @@
 module grid_locstream_module
   use ESMF
+  use netcdf
   implicit none
 contains
   subroutine create_grid(grid, nx, ny, lats, lons, rc)
@@ -91,67 +92,127 @@ contains
   end subroutine map_locstream_to_grid
 
   subroutine write_grid_to_netcdf(filename, grid, lats, lons, rc)
+    use netcdf
     character(len=*), intent(in) :: filename
     type(ESMF_Grid), intent(in) :: grid
     real(ESMF_KIND_R8), dimension(:), intent(in) :: lats, lons
     integer, intent(out) :: rc
-    type(Dataset) :: ds
-    integer :: nx, ny
+
+    integer :: ncid, lat_dimid, lon_dimid
+    integer :: lat_varid, lon_varid
+    integer :: nx, ny, status
 
     ! Get grid dimensions
     nx = size(lons)
     ny = size(lats)
 
-    ! Create a netCDF file using NCEPLIBS-ncio
-    ds = create_dataset(filename)
+    ! Create netCDF file
+    status = nf90_create(filename, NF90_CLOBBER, ncid)
+    if (status /= nf90_noerr) then
+      rc = ESMF_FAILURE
+      return
+    endif
 
-    ! Define dimensions and variables
-    call ds%def_dim('lat', ny)
-    call ds%def_dim('lon', nx)
-    call ds%def_var('latitude', NC_DOUBLE, 'lat')
-    call ds%def_var('longitude', NC_DOUBLE, 'lon')
+    ! Define dimensions
+    status = nf90_def_dim(ncid, "lat", ny, lat_dimid)
+    if (status /= nf90_noerr) goto 10
+    status = nf90_def_dim(ncid, "lon", nx, lon_dimid)
+    if (status /= nf90_noerr) goto 10
 
-    ! Add COARDS attributes to latitude and longitude
-    call ds%put_att('latitude', 'units', 'degrees_north')
-    call ds%put_att('latitude', 'long_name', 'latitude')
-    call ds%put_att('latitude', 'standard_name', 'latitude')
-    call ds%put_att('longitude', 'units', 'degrees_east')
-    call ds%put_att('longitude', 'long_name', 'longitude')
-    call ds%put_att('longitude', 'standard_name', 'longitude')
+    ! Define variables
+    status = nf90_def_var(ncid, "latitude", NF90_DOUBLE, (/lat_dimid/), lat_varid)
+    if (status /= nf90_noerr) goto 10
+    status = nf90_def_var(ncid, "longitude", NF90_DOUBLE, (/lon_dimid/), lon_varid)
+    if (status /= nf90_noerr) goto 10
 
-    ! Write data to the netCDF file
-    call ds%write_var('latitude', lats)
-    call ds%write_var('longitude', lons)
+    ! Add attributes
+    status = nf90_put_att(ncid, lat_varid, "units", "degrees_north")
+    if (status /= nf90_noerr) goto 10
+    status = nf90_put_att(ncid, lat_varid, "long_name", "latitude")
+    if (status /= nf90_noerr) goto 10
+    status = nf90_put_att(ncid, lat_varid, "standard_name", "latitude")
+    if (status /= nf90_noerr) goto 10
 
-    ! Close the netCDF file
-    call ds%close()
+    status = nf90_put_att(ncid, lon_varid, "units", "degrees_east")
+    if (status /= nf90_noerr) goto 10
+    status = nf90_put_att(ncid, lon_varid, "long_name", "longitude")
+    if (status /= nf90_noerr) goto 10
+    status = nf90_put_att(ncid, lon_varid, "standard_name", "longitude")
+    if (status /= nf90_noerr) goto 10
+
+    ! End define mode
+    status = nf90_enddef(ncid)
+    if (status /= nf90_noerr) goto 10
+
+    ! Write data
+    status = nf90_put_var(ncid, lat_varid, lats)
+    if (status /= nf90_noerr) goto 10
+    status = nf90_put_var(ncid, lon_varid, lons)
+    if (status /= nf90_noerr) goto 10
+
+    ! Close file
+    status = nf90_close(ncid)
+    if (status /= nf90_noerr) goto 10
+
+    rc = ESMF_SUCCESS
+    return
+
+  10 continue
+    rc = ESMF_FAILURE
+    return
   end subroutine write_grid_to_netcdf
 
   subroutine write_locstream_to_netcdf(filename, locstream, i_coords, j_coords, rc)
+    use netcdf
     character(len=*), intent(in) :: filename
     type(ESMF_LocStream), intent(in) :: locstream
     integer, dimension(:), intent(in) :: i_coords, j_coords
     integer, intent(out) :: rc
-    type(Dataset) :: ds
-    integer :: locCount
+
+    integer :: ncid, loc_dimid
+    integer :: i_varid, j_varid
+    integer :: locCount, status
 
     ! Get the number of locations
     call ESMF_LocStreamGet(locstream, keyword=ESMF_KEYWORD_COUNT, count=locCount, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
-    ! Create a netCDF file using NCEPLIBS-ncio
-    ds = create_dataset(filename)
+    ! Create netCDF file
+    status = nf90_create(filename, NF90_CLOBBER, ncid)
+    if (status /= nf90_noerr) then
+      rc = ESMF_FAILURE
+      return
+    endif
 
-    ! Define dimensions and variables
-    call ds%def_dim('location', locCount)
-    call ds%def_var('i_coord', NC_INT, 'location')
-    call ds%def_var('j_coord', NC_INT, 'location')
+    ! Define dimensions
+    status = nf90_def_dim(ncid, "location", locCount, loc_dimid)
+    if (status /= nf90_noerr) goto 10
 
-    ! Write data to the netCDF file
-    call ds%write_var('i_coord', i_coords)
-    call ds%write_var('j_coord', j_coords)
+    ! Define variables
+    status = nf90_def_var(ncid, "i_coord", NF90_INT, (/loc_dimid/), i_varid)
+    if (status /= nf90_noerr) goto 10
+    status = nf90_def_var(ncid, "j_coord", NF90_INT, (/loc_dimid/), j_varid)
+    if (status /= nf90_noerr) goto 10
 
-    ! Close the netCDF file
-    call ds%close()
+    ! End define mode
+    status = nf90_enddef(ncid)
+    if (status /= nf90_noerr) goto 10
+
+    ! Write data
+    status = nf90_put_var(ncid, i_varid, i_coords)
+    if (status /= nf90_noerr) goto 10
+    status = nf90_put_var(ncid, j_varid, j_coords)
+    if (status /= nf90_noerr) goto 10
+
+    ! Close file
+    status = nf90_close(ncid)
+    if (status /= nf90_noerr) goto 10
+
+    rc = ESMF_SUCCESS
+    return
+
+  10 continue
+    rc = ESMF_FAILURE
+    return
   end subroutine write_locstream_to_netcdf
 end module grid_locstream_module
