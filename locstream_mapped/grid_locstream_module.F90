@@ -2,6 +2,10 @@ module grid_locstream_module
   use ESMF
   use netcdf
   implicit none
+  private
+  public :: create_grid, create_locstream, map_locstream_to_grid
+  public :: write_grid_to_netcdf, write_locstream_to_netcdf
+
 contains
   subroutine create_grid(grid, nx, ny, lats, lons, rc)
     type(ESMF_Grid), intent(out) :: grid
@@ -40,15 +44,15 @@ contains
     end do
 
     ! Add coordinates to the Grid
-    call ESMF_GridAddCoord(grid, staggerLoc=ESMF_STAGGERLOC_CENTER, rc=rc)
+    call ESMF_GridAddCoord(grid, staggerloc=ESMF_STAGGERLOC_CENTER, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Get coordinate arrays
-    call ESMF_GridGetCoord(grid, coordDim=1, staggerLoc=ESMF_STAGGERLOC_CENTER, &
+    call ESMF_GridGetCoord(grid, coordDim=1, staggerloc=ESMF_STAGGERLOC_CENTER, &
                           farrayPtr=coordX, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
-    call ESMF_GridGetCoord(grid, coordDim=2, staggerLoc=ESMF_STAGGERLOC_CENTER, &
+    call ESMF_GridGetCoord(grid, coordDim=2, staggerloc=ESMF_STAGGERLOC_CENTER, &
                           farrayPtr=coordY, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
@@ -60,9 +64,9 @@ contains
         end do
     end do
 
-end subroutine create_grid
+  end subroutine create_grid
 
- subroutine create_locstream(locstream, locCount, coords, rc)
+  subroutine create_locstream(locstream, locCount, coords, rc)
     type(ESMF_LocStream), intent(out) :: locstream
     integer, intent(in) :: locCount
     real(ESMF_KIND_R8), dimension(:,:), allocatable, intent(out) :: coords
@@ -88,19 +92,15 @@ end subroutine create_grid
     if (rc /= ESMF_SUCCESS) return
 
     ! Add coordinates to the LocStream
-    call ESMF_LocStreamAddCoord(locstream, rc=rc)
-    if (rc /= ESMF_SUCCESS) return
+    call ESMF_LocStreamAddCoord(locstream)
 
     ! Set coordinates in the LocStream
-    call ESMF_LocStreamSetCoord(locstream, &
-                               coordArray1=coords(1,:), &
-                               coordArray2=coords(2,:), &
-                               rc=rc)
+    call ESMF_LocStreamSetCoord(locstream, coord1=coords(1,:), coord2=coords(2,:), rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
-end subroutine create_locstream
+  end subroutine create_locstream
 
-subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
+  subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     type(ESMF_Grid), intent(in) :: grid
     type(ESMF_LocStream), intent(inout) :: locstream
     integer, dimension(:), allocatable, intent(out) :: i_coords, j_coords
@@ -109,7 +109,7 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     real(ESMF_KIND_R8), dimension(:), allocatable :: lon, lat
 
     ! Get the number of locations
-    call ESMF_LocStreamGet(locstream, count=locCount, rc=rc)  ! Changed from localCount to count
+    call ESMF_LocStreamGet(locstream, localDe=0, elementCount=locCount, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Allocate arrays
@@ -121,16 +121,12 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     endif
 
     ! Get coordinates from LocStream
-    call ESMF_LocStreamGetCoord(locstream, x=lon, y=lat, rc=rc)
+    call ESMF_LocStreamGetCoord(locstream, coord1=lon, coord2=lat, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Use ESMF_GridLocate to find the grid indices
-    call ESMF_GridLocate(grid, &
-                        lon=lon, &
-                        lat=lat, &
-                        indexI=i_coords, &
-                        indexJ=j_coords, &
-                        rc=rc)
+    call ESMF_GridLocate(grid, coordX=lon, coordY=lat, &
+                        indexI=i_coords, indexJ=j_coords, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Clean up temporary arrays
@@ -140,7 +136,11 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
         return
     endif
 
-end subroutine map_locstream_to_grid
+  end subroutine map_locstream_to_grid
+
+  [rest of the code remains the same...]
+
+end module grid_locstream_module
 
   subroutine write_grid_to_netcdf(filename, grid, lats, lons, rc)
     use netcdf
