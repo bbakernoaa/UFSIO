@@ -8,7 +8,7 @@ module grid_locstream_module
 
 contains
   subroutine create_grid(grid, nx, ny, lats, lons, rc)
-    type(ESMF_GridType), intent(out) :: grid
+    type(ESMF_Grid), intent(out) :: grid
     integer, intent(in) :: nx, ny
     real(ESMF_KIND_R8), dimension(:), allocatable, intent(out) :: lats, lons
     integer, intent(out) :: rc
@@ -67,7 +67,7 @@ contains
   end subroutine create_grid
 
   subroutine create_locstream(locstream, locCount, coords, rc)
-    type(ESMF_LocStreamType), intent(out) :: locstream
+    type(ESMF_LocStream), intent(out) :: locstream
     integer, intent(in) :: locCount
     real(ESMF_KIND_R8), dimension(:,:), allocatable, intent(out) :: coords
     integer, intent(out) :: rc
@@ -101,8 +101,8 @@ contains
   end subroutine create_locstream
 
 subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
-    type(ESMF_GridType), intent(in) :: grid
-    type(ESMF_LocStreamType), intent(inout) :: locstream
+    type(ESMF_Grid), intent(in) :: grid
+    type(ESMF_LocStream), intent(inout) :: locstream
     integer, dimension(:), allocatable, intent(out) :: i_coords, j_coords
     integer, intent(out) :: rc
     integer :: locCount, stat
@@ -141,7 +141,7 @@ end subroutine map_locstream_to_grid
   subroutine write_grid_to_netcdf(filename, grid, lats, lons, rc)
     use netcdf
     character(len=*), intent(in) :: filename
-    type(ESMF_GridType), intent(in) :: grid
+    type(ESMF_Grid), intent(in) :: grid
     real(ESMF_KIND_R8), dimension(:), intent(in) :: lats, lons
     integer, intent(out) :: rc
 
@@ -212,7 +212,7 @@ end subroutine map_locstream_to_grid
   subroutine write_locstream_to_netcdf(filename, locstream, i_coords, j_coords, rc)
     use netcdf
     character(len=*), intent(in) :: filename
-    type(ESMF_LocStreamType), intent(in) :: locstream
+    type(ESMF_LocStream), intent(in) :: locstream
     integer, dimension(:), intent(in) :: i_coords, j_coords
     integer, intent(out) :: rc
 
