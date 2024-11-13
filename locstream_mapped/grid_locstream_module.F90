@@ -62,7 +62,7 @@ contains
 
 end subroutine create_grid
 
-  subroutine create_locstream(locstream, locCount, coords, rc)
+ subroutine create_locstream(locstream, locCount, coords, rc)
     type(ESMF_LocStream), intent(out) :: locstream
     integer, intent(in) :: locCount
     real(ESMF_KIND_R8), dimension(:,:), allocatable, intent(out) :: coords
@@ -88,12 +88,15 @@ end subroutine create_grid
     end do
 
     ! Set coordinates in the LocStream
-    call ESMF_LocStreamSetCoord(locstream, coords(1,:), coords(2,:), rc=rc)
+    call ESMF_LocStreamSetCoord(locstream, &
+                               coordArray1=coords(1,:), &
+                               coordArray2=coords(2,:), &
+                               rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
 end subroutine create_locstream
 
-  subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
+subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     type(ESMF_Grid), intent(in) :: grid
     type(ESMF_LocStream), intent(inout) :: locstream
     integer, dimension(:), allocatable, intent(out) :: i_coords, j_coords
@@ -114,11 +117,19 @@ end subroutine create_locstream
     endif
 
     ! Get coordinates from LocStream
-    call ESMF_LocStreamGetCoord(locstream, lon, lat, rc=rc)
+    call ESMF_LocStreamGetCoord(locstream, &
+                               coordArray1=lon, &
+                               coordArray2=lat, &
+                               rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Use ESMF_GridLocate to find the grid indices
-    call ESMF_GridLocate(grid, lon, lat, i_coords, j_coords, rc=rc)
+    call ESMF_GridLocate(grid, &
+                        lon=lon, &
+                        lat=lat, &
+                        indexI=i_coords, &
+                        indexJ=j_coords, &
+                        rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Clean up temporary arrays
