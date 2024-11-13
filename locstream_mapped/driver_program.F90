@@ -1,4 +1,3 @@
-
 program driver_program
   use ESMF
   use grid_locstream_module
@@ -12,8 +11,11 @@ program driver_program
   real(ESMF_KIND_R8), dimension(:,:), allocatable :: coords
 
   ! Initialize ESMF
-  call ESMF_Initialize(petCount=ESMF_PET_COUNT_ANY, rc=rc)
-  if (rc /= ESMF_SUCCESS) stop 'ESMF_Initialize failed'
+  call ESMF_Initialize(defaultCalKind=ESMF_CALKIND_GREGORIAN, &
+                      defaultLogFileName="esmf_driver.log", &
+                      logkindflag=ESMF_LOGKIND_MULTI, &
+                      rc=rc)
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
   ! Define grid dimensions (example: global grid with 1-degree spacing)
   nx = 360
@@ -22,28 +24,44 @@ program driver_program
 
   ! Create the grid
   call create_grid(grid, nx, ny, lats, lons, rc)
-  if (rc /= ESMF_SUCCESS) stop 'create_grid failed'
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
   ! Create the LocStream
   call create_locstream(locstream, locCount, coords, rc)
-  if (rc /= ESMF_SUCCESS) stop 'create_locstream failed'
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
+
+  ! Allocate arrays before mapping
+  allocate(i_coords(locCount), j_coords(locCount), stat=rc)
+  if (rc /= 0) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
   ! Map LocStream to grid and get i, j coordinates
-  allocate(i_coords(locCount))
-  allocate(j_coords(locCount))
   call map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
-  if (rc /= ESMF_SUCCESS) stop 'map_locstream_to_grid failed'
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
   ! Write the grid to a netCDF file
   call write_grid_to_netcdf('grid.nc', grid, lats, lons, rc)
-  if (rc /= ESMF_SUCCESS) stop 'write_grid_to_netcdf failed'
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
   ! Write the LocStream to a separate netCDF file
   call write_locstream_to_netcdf('locstream.nc', locstream, i_coords, j_coords, rc)
-  if (rc /= ESMF_SUCCESS) stop 'write_locstream_to_netcdf failed'
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
+
+  ! Clean up allocated memory
+  if (allocated(lats)) deallocate(lats)
+  if (allocated(lons)) deallocate(lons)
+  if (allocated(coords)) deallocate(coords)
+  if (allocated(i_coords)) deallocate(i_coords)
+  if (allocated(j_coords)) deallocate(j_coords)
+
+  ! Destroy ESMF objects
+  call ESMF_GridDestroy(grid, rc=rc)
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
+
+  call ESMF_LocStreamDestroy(locstream, rc=rc)
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
   ! Finalize ESMF
   call ESMF_Finalize(rc=rc)
-  if (rc /= ESMF_SUCCESS) stop 'ESMF_Finalize failed'
+  if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
 end program driver_program

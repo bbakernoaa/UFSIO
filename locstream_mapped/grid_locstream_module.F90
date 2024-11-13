@@ -9,9 +9,18 @@ contains
     real(ESMF_KIND_R8), dimension(:), intent(out) :: lats, lons
     integer, intent(out) :: rc
     integer :: i, j
+    integer, dimension(2) :: minIndex, maxIndex
 
-    ! Create a target grid with 1-degree spacing
-    call ESMF_GridCreate1PeriDim(grid, coordSys=ESMF_COORDSYS_SPH_DEG, staggerLoc=ESMF_STAGGERLOC_CENTER, rc=rc)
+    ! Set the index ranges
+    minIndex = (/1, 1/)
+    maxIndex = (/nx, ny/)
+
+    ! Create a regular lat-lon grid
+    grid = ESMF_GridCreateNoPeriDim(minIndex=minIndex, &
+                                   maxIndex=maxIndex, &
+                                   coordSys=ESMF_COORDSYS_SPH_DEG, &
+                                   indexflag=ESMF_INDEX_GLOBAL, &
+                                   rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Allocate arrays for latitude and longitude
@@ -30,7 +39,7 @@ contains
     if (rc /= ESMF_SUCCESS) return
     call ESMF_GridSetCoord(grid, staggerLoc=ESMF_STAGGERLOC_CENTER, coordDim=2, coordVals=lats, rc=rc)
     if (rc /= ESMF_SUCCESS) return
-  end subroutine create_grid
+end subroutine create_grid
 
   subroutine create_locstream(locstream, locCount, coords, rc)
     type(ESMF_LocStream), intent(out) :: locstream
@@ -39,57 +48,75 @@ contains
     integer, intent(out) :: rc
     integer :: i
 
-    ! Create a LocStream with some example locations
-    call ESMF_LocStreamCreate(locCount, coordSys=ESMF_COORDSYS_SPH_DEG, locstream=locstream, rc=rc)
+    ! Create a LocStream
+    locstream = ESMF_LocStreamCreate(minIndex=1, maxIndex=locCount, &
+                                   coordSys=ESMF_COORDSYS_SPH_DEG, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
-    ! Set example coordinates (latitude and longitude)
+    ! Allocate and set coordinates
     allocate(coords(2, locCount))
     do i = 1, locCount
-      coords(1, i) = 30.0 + i
-      coords(2, i) = -90.0 + i
+      coords(1, i) = 30.0 + i  ! longitude
+      coords(2, i) = -90.0 + i ! latitude
     end do
-    call ESMF_LocStreamSet(locstream, keyword=ESMF_KEYWORD_COORD, coordDim=1, coordVal=coords(1,:), rc=rc)
+
+    ! Add coordinates to LocStream
+    call ESMF_LocStreamAddKey(locstream, keyName="ESMF:Lon", rc=rc)
     if (rc /= ESMF_SUCCESS) return
-    call ESMF_LocStreamSet(locstream, keyword=ESMF_KEYWORD_COORD, coordDim=2, coordVal=coords(2,:), rc=rc)
+    call ESMF_LocStreamAddKey(locstream, keyName="ESMF:Lat", rc=rc)
     if (rc /= ESMF_SUCCESS) return
-  end subroutine create_locstream
+
+    call ESMF_LocStreamSetAttribute(locstream, keyName="ESMF:Lon", &
+                                  farray=coords(1,:), rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+    call ESMF_LocStreamSetAttribute(locstream, keyName="ESMF:Lat", &
+                                  farray=coords(2,:), rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+end subroutine create_locstream
 
   subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     type(ESMF_Grid), intent(in) :: grid
     type(ESMF_LocStream), intent(inout) :: locstream
     integer, dimension(:), intent(out) :: i_coords, j_coords
     integer, intent(out) :: rc
-    integer :: i, locCount
+    integer :: locCount
     real(ESMF_KIND_R8), dimension(:,:), allocatable :: coords
+    type(ESMF_RouteHandle) :: routeHandle
 
     ! Get the number of locations
-    call ESMF_LocStreamGet(locstream, keyword=ESMF_KEYWORD_COUNT, count=locCount, rc=rc)
+    call ESMF_LocStreamGet(locstream, localCount=locCount, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
-    ! Allocate arrays for coordinates
+    ! Allocate arrays
     allocate(coords(2, locCount))
-    allocate(i_coords(locCount))
-    allocate(j_coords(locCount))
+    allocate(i_coords(locCount), j_coords(locCount))
 
-    ! Loop over all points in the LocStream and map to local PET's i, j coordinates
-    do i = 1, locCount
-      call ESMF_LocStreamGet(locstream, keyword=ESMF_KEYWORD_COORD, coordDim=1, coordVal=coords(1,i), rc=rc)
-      if (rc /= ESMF_SUCCESS) return
-      call ESMF_LocStreamGet(locstream, keyword=ESMF_KEYWORD_COORD, coordDim=2, coordVal=coords(2,i), rc=rc)
-      if (rc /= ESMF_SUCCESS) return
-      call ESMF_GridGetCoord(grid, gridItem=ESMF_GRIDITEM_COORD, coordDim=1, coordVal=i_coords(i), rc=rc)
-      if (rc /= ESMF_SUCCESS) return
-      call ESMF_GridGetCoord(grid, gridItem=ESMF_GRIDITEM_COORD, coordDim=2, coordVal=j_coords(i), rc=rc)
-      if (rc /= ESMF_SUCCESS) return
+    ! Create a route handle for the regridding
+    call ESMF_LocStreamGetCoordinate(locstream, coordDim=1, &
+                                    farray=coords(1,:), rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+    call ESMF_LocStreamGetCoordinate(locstream, coordDim=2, &
+                                    farray=coords(2,:), rc=rc)
+    if (rc /= ESMF_SUCCESS) return
 
-      ! Store the i, j coordinates in the LocStream
-      call ESMF_LocStreamSet(locstream, keyword='i_coord', coordDim=1, coordVal=i_coords(i), rc=rc)
-      if (rc /= ESMF_SUCCESS) return
-      call ESMF_LocStreamSet(locstream, keyword='j_coord', coordDim=2, coordVal=j_coords(i), rc=rc)
-      if (rc /= ESMF_SUCCESS) return
-    end do
-  end subroutine map_locstream_to_grid
+    ! Use ESMF_GridLocate to find the grid indices
+    call ESMF_GridLocate(grid, coords(1,:), coords(2,:), &
+                        i_coords, j_coords, rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+
+    ! Store indices in LocStream
+    call ESMF_LocStreamAddKey(locstream, keyName="GridI", rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+    call ESMF_LocStreamAddKey(locstream, keyName="GridJ", rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+
+    call ESMF_LocStreamSetAttribute(locstream, keyName="GridI", &
+                                  iarray=i_coords, rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+    call ESMF_LocStreamSetAttribute(locstream, keyName="GridJ", &
+                                  iarray=j_coords, rc=rc)
+    if (rc /= ESMF_SUCCESS) return
+end subroutine map_locstream_to_grid
 
   subroutine write_grid_to_netcdf(filename, grid, lats, lons, rc)
     use netcdf
