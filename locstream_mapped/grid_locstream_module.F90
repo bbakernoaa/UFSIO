@@ -1,5 +1,5 @@
 module grid_locstream_module
-  use ESMF
+  use ESMF_Mod
   use netcdf
   implicit none
   private
@@ -8,7 +8,8 @@ module grid_locstream_module
 
 contains
   subroutine create_grid(grid, nx, ny, lats, lons, rc)
-    type(ESMF_Grid), intent(out) :: grid
+    implicit none
+    type(ESMF_GridType), intent(out) :: grid
     integer, intent(in) :: nx, ny
     real(ESMF_KIND_R8), dimension(:), allocatable, intent(out) :: lats, lons
     integer, intent(out) :: rc
@@ -67,7 +68,7 @@ contains
   end subroutine create_grid
 
   subroutine create_locstream(locstream, locCount, coords, rc)
-    type(ESMF_LocStream), intent(out) :: locstream
+    type(ESMF_LocStreamType), intent(out) :: locstream
     integer, intent(in) :: locCount
     real(ESMF_KIND_R8), dimension(:,:), allocatable, intent(out) :: coords
     integer, intent(out) :: rc
@@ -100,9 +101,9 @@ contains
 
   end subroutine create_locstream
 
-  subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
-    type(ESMF_Grid), intent(in) :: grid
-    type(ESMF_LocStream), intent(inout) :: locstream
+subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
+    type(ESMF_GridType), intent(in) :: grid
+    type(ESMF_LocStreamType), intent(inout) :: locstream
     integer, dimension(:), allocatable, intent(out) :: i_coords, j_coords
     integer, intent(out) :: rc
     integer :: locCount, stat
@@ -125,8 +126,8 @@ contains
     if (rc /= ESMF_SUCCESS) return
 
     ! Use ESMF_GridLocate to find the grid indices
-    call ESMF_GridLocate(grid, coordX=lon, coordY=lat, &
-                        indexI=i_coords, indexJ=j_coords, rc=rc)
+    call ESMF_GridLocate(grid, lon=lon, lat=lat, &
+                        i_indx=i_coords, j_indx=j_coords, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Clean up temporary arrays
@@ -136,14 +137,12 @@ contains
         return
     endif
 
-  end subroutine map_locstream_to_grid
-
-end module grid_locstream_module
+end subroutine map_locstream_to_grid
 
   subroutine write_grid_to_netcdf(filename, grid, lats, lons, rc)
     use netcdf
     character(len=*), intent(in) :: filename
-    type(ESMF_Grid), intent(in) :: grid
+    type(ESMF_GridType), intent(in) :: grid
     real(ESMF_KIND_R8), dimension(:), intent(in) :: lats, lons
     integer, intent(out) :: rc
 
@@ -214,7 +213,7 @@ end module grid_locstream_module
   subroutine write_locstream_to_netcdf(filename, locstream, i_coords, j_coords, rc)
     use netcdf
     character(len=*), intent(in) :: filename
-    type(ESMF_LocStream), intent(in) :: locstream
+    type(ESMF_LocStreamType), intent(in) :: locstream
     integer, dimension(:), intent(in) :: i_coords, j_coords
     integer, intent(out) :: rc
 
