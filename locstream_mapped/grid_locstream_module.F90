@@ -92,9 +92,9 @@ contains
     if (rc /= ESMF_SUCCESS) return
 
     ! Set coordinates in the LocStream
-    call ESMF_LocStreamSetCoord(locstream, ESMF_COORD_LON, coords(1,:), rc=rc)
+    call ESMF_LocStreamSetCoord(locstream, 1, coords(1,:), rc=rc)
     if (rc /= ESMF_SUCCESS) return
-    call ESMF_locStreamSetCoord(locstream, ESMF_COORD_LAT, coords(2,:), rc=rc)
+    call ESMF_locStreamSetCoord(locstream, 2, coords(2,:), rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
   end subroutine create_locstream
@@ -120,9 +120,9 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     endif
 
     ! Get coordinates from LocStream
-    call ESMF_LocStreamGetCoord(locstream, ESMF_COORD_LON, lon, rc=rc)
+    call ESMF_LocStreamGetCoord(locstream, 1, lon, rc=rc)
     if (rc /= ESMF_SUCCESS) return
-    call ESMF_LocStreamGetCoord(locstream, ESMF_COORD_LAT, lat, rc=rc)
+    call ESMF_LocStreamGetCoord(locstream, 2, lat, rc=rc)
     if (rc /= ESMF_SUCCESS) return
 
     ! Use ESMF_GridLocate to find the grid indices
