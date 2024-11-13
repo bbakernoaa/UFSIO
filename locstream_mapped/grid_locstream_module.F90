@@ -111,7 +111,7 @@ subroutine map_locstream_to_grid(grid, locstream, i_coords, j_coords, rc)
     real(ESMF_KIND_R8), dimension(:), allocatable :: lon, lat
 
     ! Get the number of locations
-    call ESMF_LocStreamGet(locstream, name='locationCount', locationCount, rc)
+    call ESMF_LocStreamGet(locstream, name='locationCount', rc=rc, locationCount=locationCount)
     if (rc /= ESMF_SUCCESS) return
 
     ! Allocate arrays
