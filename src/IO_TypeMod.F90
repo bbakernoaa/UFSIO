@@ -1,6 +1,6 @@
 module IO_TypeMod
   use ESMF
-  use charpack_mod, only: str
+  use charpak_mod, only: str
 
   implicit none
 
