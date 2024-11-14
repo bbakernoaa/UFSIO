@@ -46,12 +46,14 @@ ESMF_INTERNAL_MPIRUN := $(shell echo $(ESMF_INTERNAL_MPIRUN))
 
 
 # -----------------------------------------------------------------------------
-asyncIOApp: asyncIOApp.o asyncIODriver.o model.o io.o
+asyncIOApp: asyncIOApp.o asyncIODriver.o model.o io.o error_handling.o IO_TypeMod.o io_utils.o qfyaml_mod.o charpack_mod.o
 	$(ESMF_F90LINKER) $(ESMF_F90LINKOPTS) $(ESMF_F90LINKPATHS) $(ESMF_F90LINKRPATHS) -o $@ $^ $(ESMF_F90ESMFLINKLIBS)
 
 # module dependencies:
 asyncIOApp.o: asyncIODriver.o
 asyncIODriver.o: model.o io.o
+io.o: qfyaml_mod.o error_handling.o IO_TypeMod.o io_utils.o
+qfyaml_mod.o: charpack_mod.o
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
