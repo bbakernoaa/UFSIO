@@ -7,17 +7,18 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(ESMF REQUIRED)
 find_package(NetCDF COMPONENTS Fortran REQUIRED)
 
-# Set source files
+# Set source files with proper paths
+# Assuming source files are in a 'src' subdirectory
 set(SOURCES
-    asyncIOApp.F90
-    asyncIODriver.F90
-    model.F90
-    io.F90
-    error_handling.F90
-    IO_TypeMod.F90
-    io_utils.F90
-    qfyaml_mod.F90
-    charpack_mod.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/asyncIOApp.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/asyncIODriver.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/model.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/io.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/error_handling.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/IO_TypeMod.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/io_utils.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/qfyaml_mod.F90
+    ${CMAKE_CURRENT_SOURCE_DIR}/charpack_mod.F90
 )
 
 # Create library from the modules
@@ -30,7 +31,7 @@ target_link_libraries(asyncio_lib PUBLIC
 )
 
 # Add the main executable
-add_executable(asyncIOApp asyncIOApp.F90)
+add_executable(asyncIOApp ${CMAKE_CURRENT_SOURCE_DIR}/asyncIOApp.F90)
 target_link_libraries(asyncIOApp PRIVATE asyncio_lib)
 
 # Add custom targets for cleaning
