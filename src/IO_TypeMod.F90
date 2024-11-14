@@ -1,6 +1,7 @@
 module IO_TypeMod
   use ESMF
-  use charpak_mod, only: str
+  use charpak_mod
+  use QFYAML_Mod
 
   implicit none
 
@@ -9,24 +10,25 @@ module IO_TypeMod
   ! Add new types for configuration
   !> \brief Configuration for a single variable
   type VarConfig
-        type(ESMF_StringType) :: name           ! Variable name in file
-        type(ESMF_StringType) :: export_name    ! Name in export state
-        type(ESMF_StringType) :: time_name      ! Name of time dimension
-        type(ESMF_TypeKind_Flag) :: data_type   ! Data type (R4, R8, etc)
+        character(len=ESMF_MAXSTR) :: name           ! Variable name in file
+        character(len=ESMF_MAXSTR) :: export_name    ! Name in export state
+        character(len=ESMF_MAXSTR) :: time_name      ! Name of time dimension
+        type(ESMF_TypeKind_Flag) :: data_type        ! Data type (R4, R8, etc)
         integer, allocatable :: grid_to_field_map(:)  ! Grid to field mapping
-        logical :: time_interp                  ! Whether to do time interpolation
-        logical :: isClimatology                ! Whether this is climatological data
-        integer :: file_interval                ! Hours between files
-        real(ESMF_KIND_R8) :: scale_factor     ! Scale factor to apply
-        integer :: refresh_interval             ! Hours between refreshes
-    end type VarConfig
+        logical :: time_interp                        ! Whether to do time interpolation
+        logical :: isClimatology                      ! Whether this is climatological data
+        integer :: file_interval                      ! Hours between files
+        real(ESMF_KIND_R8) :: scale_factor           ! Scale factor to apply
+        integer :: refresh_interval                   ! Hours between refreshes
+  end type VarConfig
 
-    type Collection
-        type(ESMF_StringType) :: name              ! Collection name
-        type(ESMF_StringType) :: filename_template ! Template for filenames
-        type(ESMF_StringType) :: regrid_method    ! Regridding method
-        type(ESMF_Grid), pointer :: grid => null() ! Grid for this collection
-        type(VarConfig), allocatable :: vars(:)    ! Variables in collection
+
+  type Collection
+    character(len=ESMF_MAXSTR) :: name              ! Collection name
+    character(len=ESMF_MAXSTR) :: filename_template ! Template for filenames
+    character(len=ESMF_MAXSTR) :: regrid_method     ! Regridding method
+    type(ESMF_Grid), pointer :: grid => null()      ! Grid for this collection
+    type(VarConfig), allocatable :: vars(:)         ! Variables in collection
     end type Collection
 
   !> \brief Top level configuration container
