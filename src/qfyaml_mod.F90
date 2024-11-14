@@ -414,52 +414,6 @@ MODULE QFYAML_Mod
 
      END SUBROUTINE QFYAML_Species_Init
 
-     SUBROUTINE QFYAML_Emis_Init( fileName, yml, yml_anchored, EmisState, RC )
-        use EmisState_Mod, only : EmisStateType
-        !
-        ! !INPUT PARAMETERS:
-        !
-        CHARACTER(LEN=*), INTENT(IN)    :: fileName
-        !
-        ! !INPUT/OUTPUT PARAMETERS:
-        !
-        TYPE(QFYAML_t),   INTENT(INOUT) :: yml
-        TYPE(QFYAML_t),   INTENT(INOUT) :: yml_anchored
-        type(EmisStateType), INTENT(INOUT) :: EmisState
-        !
-        ! !OUTPUT PARAMETERS:
-        !
-        INTEGER,          INTENT(OUT)   :: RC
-        !
-        ! !LOCAL VARIABLES:
-        !
-        ! Strings
-        CHARACTER(LEN=QFYAML_StrLen) :: errMsg, thisLoc
-
-        !=======================================================================
-        ! QFYAML_Init begins here!
-        !=======================================================================
-
-        ! Initialize
-        RC      = QFYAML_success
-        errMsg  = ''
-        thisLoc = ' -> at QFYAML_Emis_Init (in module qfyaml_mod.F90)'
-
-        ! Read the YML file
-        CALL QFYAML_Read_Emis_File( yml, fileName, yml_anchored, EmisState, RC )
-
-        ! Trap potential errors
-        IF ( RC /= QFYAML_Success ) THEN
-           errMsg = 'Error encountered in "QFYAML_Read_Emis_File"!'
-           CALL Handle_Error( errMsg, RC, thisLoc )
-           RETURN
-        ENDIF
-
-        ! Sort the variable names in the yml object for faster search
-        CALL QFYAML_Sort( yml )
-
-     END SUBROUTINE QFYAML_Emis_Init
-
     !>
     !! \brief Concatenates two QFYAML_t objects together.
     !!
