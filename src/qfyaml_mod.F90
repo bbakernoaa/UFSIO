@@ -39,9 +39,7 @@ MODULE QFYAML_Mod
     PUBLIC :: QFYAML_Check
     PUBLIC :: QFYAML_FindDepth
     PUBLIC :: QFYAML_FindNextHigher
-    PUBLIC :: QFYAML_Emis_Init
     PUBLIC :: QFYAML_Init
-    PUBLIC :: QFYAML_Species_Init
     PUBLIC :: QFYAML_Merge
     PUBLIC :: QFYAML_Print
     PUBLIC :: QFYAML_Update
