@@ -86,6 +86,9 @@ contains
     ! local variables
     type(ESMF_State)     :: importState    !< State containing fields to be imported from other components
     type(ESMF_State)     :: exportState    !< State containing fields to be exported to other components
+    integer              :: i, j
+    character(len=160)   :: msgString      !< Message string for logging
+
 
     rc = ESMF_SUCCESS
 
@@ -106,9 +109,9 @@ contains
               TransferOfferGeomObject="will provide", rc=rc)
             if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
                 line=__LINE__, file=__FILE__)) then
-                write(msg,*) "Error advertising field: ", &
+                write(msgString,*) "Error advertising field: ", &
                     trim(io_config%collections(i)%vars(j)%name)
-                call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+                call ESMF_LogWrite(msgString, ESMF_LOGMSG_ERROR)
                 return
             endif
           end do
@@ -582,27 +585,26 @@ contains
         ! Convert config regrid method to ESMF type
         select case(trim(io_config%collections(i)%regrid_method))
         case("bilinear")
-          regrid_method = ESMF_REGRID_METHOD_BILINEAR
+          regrid_method = ESMF_REGRIDMETHOD_BILINEAR
         case("conserve")
-          regrid_method = ESMF_REGRID_METHOD_CONSERVE
+          regrid_method = ESMF_REGRIDMETHOD_CONSERVE
         case("nearest")
-          regrid_method = ESMF_REGRID_METHOD_NEAREST_STOD
+          regrid_method = ESMF_REGRIDMETHOD_NEAREST_STOD
         case("patch")
-          regrid_method = ESMF_REGRID_METHOD_PATCH
+          regrid_method = ESMF_REGRIDMETHOD_PATCH
         case default
           write(msgString,*) "Unknown regrid method: ", &
             trim(io_config%collections(i)%regrid_method), &
             ". Using bilinear."
           call ESMF_LogWrite(msgString, ESMF_LOGMSG_WARNING, rc=rc)
-          regrid_method = ESMF_REGRID_METHOD_BILINEAR
+          regrid_method = ESMF_REGRIDMETHOD_BILINEAR
         end select
 
         ! Create grid from file
-        call ESMF_GridCreateFromFile( &
+        io_config%collections(i)%grid = ESMF_GridCreate( &
           filename=trim(filename), &
-          fileformat=ESMF_FILEFORMAT_NETCDF, &
-          regridMethod=regrid_method, &
-          grid=io_config%collections(i)%grid, &
+          fileformat=ESMF_FILEFORMAT_GRIDSPEC, &
+          ! regridMethod=regrid_method, &
           rc=rc)
         call Check_ESMFLogErr(rc, __LINE__, __FILE__)
 
@@ -620,7 +622,7 @@ contains
         call Check_ESMFLogErr(rc, __LINE__, __FILE__)
 
         ! Check if it's time to refresh this variable
-        if (mod(hours_elapsed, io_config%collections(i)%vars(j)%refresh_interval) == 0) then
+        if (mod(int(hours_elapsed), io_config%collections(i)%vars(j)%refresh_interval) == 0) then
           ! Read the field data
           call read_field_data(filename, &
             io_config%collections(i)%vars(j), &
@@ -713,6 +715,7 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
     character(ESMF_MAXSTR) :: timeString1, timeString2
     integer :: ncid, varid
     logical :: file_exists
+    character(len=160) :: msgString !< Message string for logging
 
     rc = ESMF_SUCCESS
 
@@ -721,7 +724,7 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
                             name=var_config%name, &
                             gridToFieldMap=var_config%grid_to_field_map, &
                             rc=status)
-    call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+    call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
     ! Get bracketing times and filenames based on data type
     if (var_config%isClimatology) then
@@ -732,7 +735,7 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
         call get_data_bracketing_times(curr_time, filename_template, var_config, &
                                      time1, time2, w1, w2, filename1, filename2, rc)
     endif
-    call Check_ESMFLogErr(rc, __LINE__, __FILE__, rc)
+    call Check_ESMFLogErr(rc, __LINE__, __FILE__)
 
     ! Check if first file exists
     inquire(file=trim(filename1), exist=file_exists)
@@ -747,11 +750,11 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
     field1 = ESMF_FieldCreate(grid, typekind=var_config%data_type, &
                              gridToFieldMap=var_config%grid_to_field_map, &
                              rc=status)
-    call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+    call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
     ! Read first time slice
     call ESMF_TimeGet(time1, timeStringISOFrac=timeString1, rc=status)
-    call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+    call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
     ! Open first file
     status = nf90_open(filename1, NF90_NOWRITE, ncid)
@@ -772,19 +775,19 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
     endif
 
     ! Read data from first file
-    call ESMF_FieldRead(field1, filename1, var_config%name, &
-                       timeslice=timeString1, rc=status)
-    call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+    call ESMF_FieldRead(field1, filename1, variableName=var_config%name, &
+                       timeslice=1, rc=status)
+    call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
     if (var_config%time_interp) then
         ! Create and read second field if interpolation needed
         field2 = ESMF_FieldCreate(grid, typekind=var_config%data_type, &
                                  gridToFieldMap=var_config%grid_to_field_map, &
                                  rc=status)
-        call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+        call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
         call ESMF_TimeGet(time2, timeStringISOFrac=timeString2, rc=status)
-        call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+        call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
         ! Check if second file exists (if different from first)
         if (filename2 /= filename1) then
@@ -798,35 +801,35 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
         endif
 
         ! Read data from second file
-        call ESMF_FieldRead(field2, filename2, var_config%name, &
-                           timeslice=timeString2, rc=status)
-        call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+        call ESMF_FieldRead(field2, filename2, variableName=var_config%name, &
+                           timeslice=1, rc=status)
+        call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
         ! Get pointers for interpolation
         call ESMF_FieldGet(field, farrayPtr=fptr, rc=status)
-        call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+        call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
         call ESMF_FieldGet(field1, farrayPtr=f1ptr, rc=status)
-        call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+        call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
         call ESMF_FieldGet(field2, farrayPtr=f2ptr, rc=status)
-        call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+        call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
         ! Perform time interpolation
         fptr = w1 * f1ptr + w2 * f2ptr
 
         ! Clean up second field
         call ESMF_FieldDestroy(field2, rc=status)
-        call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+        call Check_ESMFLogErr(status, __LINE__, __FILE__)
     else
         ! No interpolation needed, just copy the data
         call ESMF_FieldCopy(field1, field, rc=status)
-        call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+        call Check_ESMFLogErr(status, __LINE__, __FILE__)
     endif
 
     ! Clean up first field
     call ESMF_FieldDestroy(field1, rc=status)
-    call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+    call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
     ! Close NetCDF file
     status = nf90_close(ncid)
@@ -967,7 +970,11 @@ end subroutine read_field_data
 
     ! Check if second time is in next file
     if (hours2 >= numTimes) then
-        call nf90_close(ncid)
+        status = nf90_close(ncid)
+        if (status /= NF90_NOERR) then
+            rc = ESMF_FAILURE
+            return
+        endif
 
         ! Open next file if different
         if (filename1 /= filename2) then
@@ -1029,7 +1036,7 @@ subroutine get_clim_bracketing_times(curr_time, time1, time2, w1, w2, rc)
 
   ! Get current date components
   call ESMF_TimeGet(curr_time, yy=yy, mm=mm, dd=dd, rc=status)
-  call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+  call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
   ! Calculate day of year for current time
   call calc_doy(yy, mm, dd, curr_doy)
@@ -1037,7 +1044,7 @@ subroutine get_clim_bracketing_times(curr_time, time1, time2, w1, w2, rc)
 
   ! Set base time to January 1st of current year
   call ESMF_TimeSet(base_time, yy=yy, mm=1, dd=1, rc=status)
-  call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+  call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
   ! Find bracketing climatological times
   if (curr_doy == 1) then
@@ -1063,7 +1070,7 @@ subroutine get_clim_bracketing_times(curr_time, time1, time2, w1, w2, rc)
 
   ! Set time1
   call ESMF_TimeIntervalSet(time_offset, d=time1_doy-1, rc=status)
-  call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+  call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
   time1 = base_time + time_offset
 
@@ -1073,7 +1080,7 @@ subroutine get_clim_bracketing_times(curr_time, time1, time2, w1, w2, rc)
       time2 = base_time
   else
       call ESMF_TimeIntervalSet(time_offset, d=time2_doy-1, rc=status)
-      call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+      call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
       time2 = base_time + time_offset
   endif
@@ -1191,7 +1198,7 @@ subroutine get_file_time_info(ncid, time_name, refTime, numTimes, rc)
 
     ! Create reference time
     call ESMF_TimeSet(refTime, yy=yy, mm=mm, dd=dd, h=hh, m=min, s=sec, rc=status)
-    call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
+    call Check_ESMFLogErr(status, __LINE__, __FILE__)
 
 end subroutine get_file_time_info
 

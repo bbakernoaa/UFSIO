@@ -5,7 +5,7 @@ module IO_TypeMod
 
   implicit none
 
-  character(len=ESMF_MAXSTR) :: msgString
+!   character(len=ESMF_MAXSTR) :: msgString
 
   ! Add new types for configuration
   !> \brief Configuration for a single variable
