@@ -7,6 +7,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(ESMF REQUIRED)
 find_package(NetCDF COMPONENTS Fortran REQUIRED)
 
+# Add MPI
+find_package(MPI REQUIRED)  # TODO: only if ESMF is built with MPI
+
 # Add library and main executable
 add_subdirectory(src)
 

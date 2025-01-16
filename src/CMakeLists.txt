@@ -16,6 +16,7 @@ add_library(asyncio_lib ${_sources})
 target_link_libraries(asyncio_lib PUBLIC
     ESMF
     NetCDF::NetCDF_Fortran
+    MPI::MPI_Fortran  # TODO: only if ESMF is built with MPI
 )
 
 # Add the main executable
