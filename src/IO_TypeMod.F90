@@ -1,7 +1,7 @@
 module IO_TypeMod
   use ESMF
-  use charpak_mod
-  use QFYAML_Mod
+  use charpak_mod  ! FIXME: unused (or only-ify)?
+  use QFYAML_Mod, only: QFYAML_CleanUp, QFYAML_Init, qf_yaml => QFYAML_t
 
   implicit none
 
@@ -22,7 +22,6 @@ module IO_TypeMod
         integer :: refresh_interval                   ! Hours between refreshes
   end type VarConfig
 
-
   type Collection
     character(len=ESMF_MAXSTR) :: name              ! Collection name
     character(len=ESMF_MAXSTR) :: filename_template ! Template for filenames
@@ -33,7 +32,7 @@ module IO_TypeMod
 
   !> \brief Top level configuration container
   type :: IOConfig
-    type(InputCollection), allocatable :: collections(:)
+    type(Collection), allocatable :: collections(:)
   contains
     procedure :: init => init_config
   end type
@@ -52,8 +51,9 @@ contains
       type(IOConfig), intent(out) :: io_config
       integer, intent(out) :: rc
 
-      type(qf_yaml) :: yaml
+      type(qf_yaml) :: yaml, yaml_anchored
       character(len=ESMF_MAXSTR) :: msg
+      logical :: file_exists
 
       ! Initialize return code
       rc = ESMF_SUCCESS
@@ -68,8 +68,8 @@ contains
       endif
 
       ! Initialize YAML parser
-      call yaml%load_file(config_file)
-      if (yaml%error() /= 0) then
+      call QFYAML_Init(config_file, yaml, yaml_anchored, rc)
+      if (rc /= 0) then
           write(msg, *) "Failed to load YAML file: ", trim(config_file)
           call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
           rc = ESMF_FAILURE
@@ -85,7 +85,8 @@ contains
       endif
 
       ! Cleanup
-      call yaml%destroy()
+      call QFYAML_CleanUp(yaml)
+      call QFYAML_CleanUp(yaml_anchored)
 
     end subroutine read_io_config
 
