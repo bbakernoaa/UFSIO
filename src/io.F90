@@ -101,13 +101,13 @@ contains
           do j = 1, size(io_config%collections(i)%vars)
             ! Advertise each variable in the export state
             call NUOPC_Advertise(exportState, &
-              StandardName=io_config%collections(i)%vars(j)%name%str(), &
-              name=io_config%collections(i)%vars(j)%export_name%str(), &
+              StandardName=io_config%collections(i)%vars(j)%name, &
+              name=io_config%collections(i)%vars(j)%export_name, &
               TransferOfferGeomObject="will provide", rc=rc)
             if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
                 line=__LINE__, file=__FILE__)) then
                 write(msg,*) "Error advertising field: ", &
-                    trim(io_config%collections(i)%vars(j)%name%str())
+                    trim(io_config%collections(i)%vars(j)%name)
                 call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
                 return
             endif
@@ -565,7 +565,7 @@ contains
     ! Process each collection
     collection_loop: do i = 1, size(io_config%collections)
       ! Generate filename for current time
-      call get_filename_for_time(io_config%collections(i)%filename_template%str(), &
+      call get_filename_for_time(io_config%collections(i)%filename_template, &
         currTime, filename, rc)
       call Check_ESMFLogErr(rc, __LINE__, __FILE__)
 
@@ -580,7 +580,7 @@ contains
       ! Create grid from file if not already created
       if (.not. associated(io_config%collections(i)%grid)) then
         ! Convert config regrid method to ESMF type
-        select case(trim(io_config%collections(i)%regrid_method%str()))
+        select case(trim(io_config%collections(i)%regrid_method))
         case("bilinear")
           regrid_method = ESMF_REGRID_METHOD_BILINEAR
         case("conserve")
@@ -591,7 +591,7 @@ contains
           regrid_method = ESMF_REGRID_METHOD_PATCH
         case default
           write(msgString,*) "Unknown regrid method: ", &
-            trim(io_config%collections(i)%regrid_method%str()), &
+            trim(io_config%collections(i)%regrid_method), &
             ". Using bilinear."
           call ESMF_LogWrite(msgString, ESMF_LOGMSG_WARNING, rc=rc)
           regrid_method = ESMF_REGRID_METHOD_BILINEAR
@@ -607,8 +607,8 @@ contains
         call Check_ESMFLogErr(rc, __LINE__, __FILE__)
 
         write(msgString,*) "Created grid from file for collection: ", &
-          trim(io_config%collections(i)%name%str()), &
-          " using regrid method: ", trim(io_config%collections(i)%regrid_method%str())
+          trim(io_config%collections(i)%name), &
+          " using regrid method: ", trim(io_config%collections(i)%regrid_method)
         call ESMF_LogWrite(msgString, ESMF_LOGMSG_INFO, rc=rc)
         call Check_ESMFLogErr(rc, __LINE__, __FILE__)
       endif ! grid creation
@@ -637,7 +637,7 @@ contains
 
           ! Update field in export state
           call ESMF_StateGet(exportState, &
-            io_config%collections(i)%vars(j)%export_name%str(), &
+            io_config%collections(i)%vars(j)%export_name, &
             field, rc=rc)
           if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, &
             line=__LINE__, file=__FILE__)) then
