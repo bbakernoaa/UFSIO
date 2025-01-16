@@ -718,7 +718,7 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
 
     ! Create the output field
     field = ESMF_FieldCreate(grid, typekind=var_config%data_type, &
-                            name=var_config%var_name, &
+                            name=var_config%name, &
                             gridToFieldMap=var_config%grid_to_field_map, &
                             rc=status)
     call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
@@ -763,16 +763,16 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
     endif
 
     ! Check if variable exists
-    status = nf90_inq_varid(ncid, trim(var_config%var_name), varid)
+    status = nf90_inq_varid(ncid, trim(var_config%name), varid)
     if (status /= NF90_NOERR) then
         call ESMF_LogWrite("Variable not found in file: "// &
-                          trim(var_config%var_name), ESMF_LOGMSG_ERROR)
+                          trim(var_config%name), ESMF_LOGMSG_ERROR)
         rc = ESMF_FAILURE
         return
     endif
 
     ! Read data from first file
-    call ESMF_FieldRead(field1, filename1, var_config%var_name, &
+    call ESMF_FieldRead(field1, filename1, var_config%name, &
                        timeslice=timeString1, rc=status)
     call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
 
@@ -798,7 +798,7 @@ subroutine read_field_data(filename_template, var_config, grid, curr_time, field
         endif
 
         ! Read data from second file
-        call ESMF_FieldRead(field2, filename2, var_config%var_name, &
+        call ESMF_FieldRead(field2, filename2, var_config%name, &
                            timeslice=timeString2, rc=status)
         call Check_ESMFLogErr(status, __LINE__, __FILE__, rc)
 
