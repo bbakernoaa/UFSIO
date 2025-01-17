@@ -1,11 +1,11 @@
 module IO_TypeMod
   use ESMF
-  use charpak_mod
-  use QFYAML_Mod
+  use charpak_mod  ! FIXME: unused (or only-ify)?
+  use QFYAML_Mod, only: QFYAML_CleanUp, QFYAML_Get, QFYAML_Init, qf_yaml => QFYAML_t
 
   implicit none
 
-  character(len=ESMF_MAXSTR) :: msgString
+!   character(len=ESMF_MAXSTR) :: msgString
 
   ! Add new types for configuration
   !> \brief Configuration for a single variable
@@ -22,7 +22,6 @@ module IO_TypeMod
         integer :: refresh_interval                   ! Hours between refreshes
   end type VarConfig
 
-
   type Collection
     character(len=ESMF_MAXSTR) :: name              ! Collection name
     character(len=ESMF_MAXSTR) :: filename_template ! Template for filenames
@@ -33,7 +32,7 @@ module IO_TypeMod
 
   !> \brief Top level configuration container
   type :: IOConfig
-    type(InputCollection), allocatable :: collections(:)
+    type(Collection), allocatable :: collections(:)
   contains
     procedure :: init => init_config
   end type
@@ -52,8 +51,9 @@ contains
       type(IOConfig), intent(out) :: io_config
       integer, intent(out) :: rc
 
-      type(qf_yaml) :: yaml
+      type(qf_yaml) :: yaml, yaml_anchored
       character(len=ESMF_MAXSTR) :: msg
+      logical :: file_exists
 
       ! Initialize return code
       rc = ESMF_SUCCESS
@@ -68,8 +68,8 @@ contains
       endif
 
       ! Initialize YAML parser
-      call yaml%load_file(config_file)
-      if (yaml%error() /= 0) then
+      call QFYAML_Init(config_file, yaml, yaml_anchored, rc)
+      if (rc /= 0) then
           write(msg, *) "Failed to load YAML file: ", trim(config_file)
           call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
           rc = ESMF_FAILURE
@@ -85,7 +85,8 @@ contains
       endif
 
       ! Cleanup
-      call yaml%destroy()
+      call QFYAML_CleanUp(yaml)
+      call QFYAML_CleanUp(yaml_anchored)
 
     end subroutine read_io_config
 
@@ -108,158 +109,158 @@ contains
 
       rc = ESMF_SUCCESS
 
-      ! Get collections section
-      if (.not. yaml%has("inputcollections")) then
-          call ESMF_LogWrite("Missing required 'inputcollections' section", &
-                            ESMF_LOGMSG_ERROR)
-          rc = ESMF_FAILURE
-          return
-      endif
+    !   ! Get collections section
+    !   if (.not. yaml%has("inputcollections")) then
+    !       call ESMF_LogWrite("Missing required 'inputcollections' section", &
+    !                         ESMF_LOGMSG_ERROR)
+    !       rc = ESMF_FAILURE
+    !       return
+    !   endif
 
-      collections = yaml%get("inputcollections")
-      ncoll = collections%count()
+    !   collections = yaml%get("inputcollections")
+    !   ncoll = collections%count()
 
-      if (ncoll < 1) then
-          call ESMF_LogWrite("No input collections found in configuration", &
-                            ESMF_LOGMSG_ERROR)
-          rc = ESMF_FAILURE
-          return
-      endif
+    !   if (ncoll < 1) then
+    !       call ESMF_LogWrite("No input collections found in configuration", &
+    !                         ESMF_LOGMSG_ERROR)
+    !       rc = ESMF_FAILURE
+    !       return
+    !   endif
 
-      ! Allocate collections array
-      allocate(this%collections(ncoll), stat=localrc)
-      if (localrc /= 0) then
-          call ESMF_LogWrite("Failed to allocate collections array", &
-                            ESMF_LOGMSG_ERROR)
-          rc = ESMF_FAILURE
-          return
-      endif
+    !   ! Allocate collections array
+    !   allocate(this%collections(ncoll), stat=localrc)
+    !   if (localrc /= 0) then
+    !       call ESMF_LogWrite("Failed to allocate collections array", &
+    !                         ESMF_LOGMSG_ERROR)
+    !       rc = ESMF_FAILURE
+    !       return
+    !   endif
 
-      ! Process each collection
-      collection_loop: do i = 1, ncoll
-          coll_item = collections%get(i)
+    !   ! Process each collection
+    !   collection_loop: do i = 1, ncoll
+    !       coll_item = collections%get(i)
 
-          ! Verify required collection fields
-          if (.not. coll_item%has("name")) then
-              write(msg, *) "Missing required 'name' for collection ", i
-              call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
-              rc = ESMF_FAILURE
-              return
-          endif
+    !       ! Verify required collection fields
+    !       if (.not. coll_item%has("name")) then
+    !           write(msg, *) "Missing required 'name' for collection ", i
+    !           call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+    !           rc = ESMF_FAILURE
+    !           return
+    !       endif
 
-          if (.not. coll_item%has("file_template")) then
-              write(msg, *) "Missing required 'file_template' for collection ", i
-              call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
-              rc = ESMF_FAILURE
-              return
-          endif
+    !       if (.not. coll_item%has("file_template")) then
+    !           write(msg, *) "Missing required 'file_template' for collection ", i
+    !           call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+    !           rc = ESMF_FAILURE
+    !           return
+    !       endif
 
-          ! Get collection metadata
-          temp_str = coll_item%get("name")%to_str()
-          call this%collections(i)%name%set(temp_str)
+    !       ! Get collection metadata
+    !       temp_str = coll_item%get("name")%to_str()
+    !       call this%collections(i)%name%set(temp_str)
 
-          temp_str = coll_item%get("file_template")%to_str()
-          call this%collections(i)%filename_template%set(temp_str)
+    !       temp_str = coll_item%get("file_template")%to_str()
+    !       call this%collections(i)%filename_template%set(temp_str)
 
-          ! Process variables section
-          if (.not. coll_item%has("vars_to_read")) then
-              write(msg, *) "Missing required 'vars_to_read' for collection ", i
-              call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
-              rc = ESMF_FAILURE
-              return
-          endif
+    !       ! Process variables section
+    !       if (.not. coll_item%has("vars_to_read")) then
+    !           write(msg, *) "Missing required 'vars_to_read' for collection ", i
+    !           call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+    !           rc = ESMF_FAILURE
+    !           return
+    !       endif
 
-          vars = coll_item%get("vars_to_read")
-          nvars = vars%count()
+    !       vars = coll_item%get("vars_to_read")
+    !       nvars = vars%count()
 
-          if (nvars < 1) then
-              write(msg, *) "No variables specified for collection ", i
-              call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
-              rc = ESMF_FAILURE
-              return
-          endif
+    !       if (nvars < 1) then
+    !           write(msg, *) "No variables specified for collection ", i
+    !           call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+    !           rc = ESMF_FAILURE
+    !           return
+    !       endif
 
-          ! Allocate variables array
-          allocate(this%collections(i)%vars(nvars), stat=localrc)
-          if (localrc /= 0) then
-              write(msg, *) "Failed to allocate variables array for collection ", i
-              call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
-              rc = ESMF_FAILURE
-              return
-          endif
+    !       ! Allocate variables array
+    !       allocate(this%collections(i)%vars(nvars), stat=localrc)
+    !       if (localrc /= 0) then
+    !           write(msg, *) "Failed to allocate variables array for collection ", i
+    !           call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+    !           rc = ESMF_FAILURE
+    !           return
+    !       endif
 
-          ! Process each variable
-          variable_loop: do j = 1, nvars
-              var_item = vars%get(j)
+    !       ! Process each variable
+    !       variable_loop: do j = 1, nvars
+    !           var_item = vars%get(j)
 
-              ! Verify required variable fields
-              if (.not. var_item%has("name")) then
-                  write(msg, *) "Missing required 'name' for variable ", j, &
-                               " in collection ", i
-                  call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
-                  rc = ESMF_FAILURE
-                  return
-              endif
+    !           ! Verify required variable fields
+    !           if (.not. var_item%has("name")) then
+    !               write(msg, *) "Missing required 'name' for variable ", j, &
+    !                            " in collection ", i
+    !               call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+    !               rc = ESMF_FAILURE
+    !               return
+    !           endif
 
-              if (.not. var_item%has("regridding_method")) then
-                  write(msg, *) "Missing required 'regridding_method' for variable ", &
-                               j, " in collection ", i
-                  call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
-                  rc = ESMF_FAILURE
-                  return
-              endif
+    !           if (.not. var_item%has("regridding_method")) then
+    !               write(msg, *) "Missing required 'regridding_method' for variable ", &
+    !                            j, " in collection ", i
+    !               call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+    !               rc = ESMF_FAILURE
+    !               return
+    !           endif
 
-              ! Fill variable config
-              temp_str = var_item%get("name")%to_str()
-              call this%collections(i)%vars(j)%name%set(temp_str)
+    !           ! Fill variable config
+    !           temp_str = var_item%get("name")%to_str()
+    !           call this%collections(i)%vars(j)%name%set(temp_str)
 
-              temp_str = var_item%get("regridding_method")%to_str()
-              call this%collections(i)%vars(j)%regridding_method%set(temp_str)
+    !           temp_str = var_item%get("regridding_method")%to_str()
+    !           call this%collections(i)%vars(j)%regridding_method%set(temp_str)
 
-              ! Required refresh_interval
-              if (.not. var_item%has("refresh_interval")) then
-                  write(msg, *) "Missing required 'refresh_interval' for variable ", &
-                               j, " in collection ", i
-                  call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
-                  rc = ESMF_FAILURE
-                  return
-              endif
+    !           ! Required refresh_interval
+    !           if (.not. var_item%has("refresh_interval")) then
+    !               write(msg, *) "Missing required 'refresh_interval' for variable ", &
+    !                            j, " in collection ", i
+    !               call ESMF_LogWrite(msg, ESMF_LOGMSG_ERROR)
+    !               rc = ESMF_FAILURE
+    !               return
+    !           endif
 
-              this%collections(i)%vars(j)%refresh_interval = &
-                  var_item%get("refresh_interval")%to_real()
+    !           this%collections(i)%vars(j)%refresh_interval = &
+    !               var_item%get("refresh_interval")%to_real()
 
-              ! Optional fields with default values
-              if (var_item%has("export_name")) then
-                  temp_str = var_item%get("export_name")%to_str()
-                  call this%collections(i)%vars(j)%export_name%set(temp_str)
-              else
-                  call this%collections(i)%vars(j)%export_name%set( &
-                      this%collections(i)%vars(j)%name%str())
-              endif
+    !           ! Optional fields with default values
+    !           if (var_item%has("export_name")) then
+    !               temp_str = var_item%get("export_name")%to_str()
+    !               call this%collections(i)%vars(j)%export_name%set(temp_str)
+    !           else
+    !               call this%collections(i)%vars(j)%export_name%set( &
+    !                   this%collections(i)%vars(j)%name%str())
+    !           endif
 
-              if (var_item%has("scale_factor")) then
-                  this%collections(i)%vars(j)%scale_factor = &
-                      var_item%get("scale_factor")%to_real()
-              else
-                  this%collections(i)%vars(j)%scale_factor = 1.0_ESMF_KIND_R8
-              endif
+    !           if (var_item%has("scale_factor")) then
+    !               this%collections(i)%vars(j)%scale_factor = &
+    !                   var_item%get("scale_factor")%to_real()
+    !           else
+    !               this%collections(i)%vars(j)%scale_factor = 1.0_ESMF_KIND_R8
+    !           endif
 
-              if (var_item%has("isClimatology")) then
-                  this%collections(i)%vars(j)%isClimatology = &
-                      var_item%get("isClimatology")%to_logical()
-              else
-                  this%collections(i)%vars(j)%isClimatology = .false.
-              endif
+    !           if (var_item%has("isClimatology")) then
+    !               this%collections(i)%vars(j)%isClimatology = &
+    !                   var_item%get("isClimatology")%to_logical()
+    !           else
+    !               this%collections(i)%vars(j)%isClimatology = .false.
+    !           endif
 
-              if (var_item%has("time_interp")) then
-                  this%collections(i)%vars(j)%time_interp = &
-                      var_item%get("time_interp")%to_logical()
-              else
-                  this%collections(i)%vars(j)%time_interp = .true.
-              endif
+    !           if (var_item%has("time_interp")) then
+    !               this%collections(i)%vars(j)%time_interp = &
+    !                   var_item%get("time_interp")%to_logical()
+    !           else
+    !               this%collections(i)%vars(j)%time_interp = .true.
+    !           endif
 
-          end do variable_loop
-      end do collection_loop
+    !       end do variable_loop
+    !   end do collection_loop
 
   end subroutine init_config
 

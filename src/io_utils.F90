@@ -1,19 +1,12 @@
 module io_utils
   use ESMF
-  use netcdf
-  use error_handling, only: Check_ESMFLogErr
+  use error_handling, only: Check_ESMFLogErr  ! FIXME: unused
 
   implicit none
 
-  public readGridFromFile
-  ! other public functions and variables
-
-  contains
+contains
 
   subroutine calc_doy(year, month, day, doy)
-    use io_utils, only: check_date
-    implicit none
-
     ! Arguments
     integer, intent(in)  :: year, month, day
     integer, intent(out) :: doy
@@ -38,9 +31,6 @@ module io_utils
   end subroutine calc_doy
 
   subroutine check_date(year, month, day, rc)
-    use ESMF
-    implicit none
-
     ! Arguments
     integer, intent(in)  :: year, month, day
     integer, intent(out) :: rc
@@ -81,28 +71,39 @@ module io_utils
 
   end subroutine check_date
 
-  !==============================================================================
+  function replace_time_template(template, clock) result(output)
+    use Charpak_Mod, only: replace => StrRepl
 
-
-  function replaceTemplate(template, time_format, esmf_clock) result(output)
-    character(len=*), intent(in) :: template, time_format
-    type(ESMF_Clock), intent(in) :: esmf_clock
+    character(len=*), intent(in) :: template
+    type(ESMF_Clock), intent(in) :: clock
     character(len=256) :: output
-    character(len=4) :: year
-    character(len=2) :: month, day
+
+    type(ESMF_Time) :: time
+    integer :: year, month, day
+    character(len=4) :: s_year
+    character(len=2) :: s_month, s_day
     integer :: rc
 
-    call ESMF_ClockGet(ESMF_ClockGetStartTime(esmf_clock), year=year, month=month, day=day, rc=rc)
+    call ESMF_ClockGet(clock, startTime=time, rc=rc)
     if (rc /= ESMF_SUCCESS) then
-      print *, 'Error getting date from ESMF_Clock'
-      stop
+      print *, 'Error getting start time from ESMF_Clock'
+      return
     end if
+
+    call ESMF_TimeGet(time, yy=year, m=month, d=day, rc=rc)
+    if (rc /= ESMF_SUCCESS) then
+      print *, 'Error getting time info from ESMF_Time'
+      return
+    end if
+    write (s_year, '(I4)') year
+    write (s_month, '(I2)') month
+    write (s_day, '(I2)') day
 
     ! Replace placeholders in the time format with actual values
     output = template
-    output = replace(output, "{yyyy}", year)
-    output = replace(output, "{mm}", month)
-    output = replace(output, "{dd}", day)
-  end function replaceTemplate
+    call replace(output, "{yyyy}", s_year)
+    call replace(output, "{mm}", s_month)
+    call replace(output, "{dd}", s_day)
+  end function replace_time_template
 
 end module io_utils
